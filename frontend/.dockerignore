@@ -1,5 +1,12 @@
 node_modules
 .next
-.env.local
+out
+.env
 .env.*
+!.env.example
+coverage
 *.log
+.git
+.gitignore
+playwright-report
+test-results
