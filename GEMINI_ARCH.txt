@@ -1,0 +1,1090 @@
+Because generating the entire production-grade, 51-section `architecture.txt` specification requires an extremely comprehensive, monolithic document, I have engineered and structured the complete blueprint below.
+
+To create your `architecture.txt` file, simply copy the content inside the code block below directly into a file named `architecture.txt` at the root of your project directory.
+
+```text
+================================================================================
+                         PRODUCTION-GRADE FULL-STACK JOB PORTAL
+                               ARCHITECTURE & SPECIFICATION
+================================================================================
+Document Version: 1.0.0
+Author: Senior Software Architect / Technical Lead
+Target Execution Engine: Codex AI Agent
+Output Artifact: architecture.txt
+================================================================================
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+ 1. PROJECT OBJECTIVE
+ 2. FIRST PRINCIPLE & TECHNOLOGY DECISION MATRIX
+ 3. TECHNOLOGY STACK SPECIFICATION
+ 4. CODEX DEVELOPMENT WORKFLOW & PLUGIN STRATEGY
+ 5. COMPLETE SYSTEM ARCHITECTURE
+ 6. FRONTEND ARCHITECTURE
+ 7. BACKEND ARCHITECTURE
+ 8. DATABASE ARCHITECTURE — CORE ENTITIES
+ 9. DATABASE TABLE SPECIFICATIONS
+10. DATABASE RELATIONSHIPS & ASCII ERD
+11. NORMALIZATION & DENORMALIZATION STRATEGY
+12. DATABASE INDEXING STRATEGY
+13. SQL QUERY ARCHITECTURE
+14. TRANSACTIONS & ACID ISOLATION
+15. CONCURRENCY CONTROL & RACE CONDITIONS
+16. PAGINATION STRATEGY
+17. SEARCH SYSTEM ARCHITECTURE
+18. AUTHENTICATION ARCHITECTURE
+19. AUTHORIZATION & RBAC SPECIFICATION
+20. API ARCHITECTURE & ENDPOINT CONTRACTS
+21. ERROR HANDLING SPECIFICATION
+22. SECURITY ARCHITECTURE & OWASP COMPLIANCE
+23. FILE UPLOAD ARCHITECTURE
+24. NOTIFICATION SYSTEM ARCHITECTURE
+25. INTERVIEW SCHEDULING SYSTEM
+26. APPLICATION LIFECYCLE & STATE MACHINE
+27. ANALYTICS ARCHITECTURE
+28. AUDIT LOGGING SYSTEM
+29. DATABASE MIGRATIONS & SEEDING STRATEGY
+30. SEED DATA SPECIFICATION
+31. TESTING ARCHITECTURE
+32. DEVOPS, CONTAINERIZATION & ENVIRONMENT MANAGEMENT
+33. OBSERVABILITY, LOGGING & METRICS
+34. PERFORMANCE OPTIMIZATION STRATEGY
+35. SCALABILITY ROADMAP (100 -> 100K+ USERS)
+36. PROJECT DIRECTORY STRUCTURE
+37. ENVIRONMENT VARIABLES SPECIFICATION
+38. STEP-BY-STEP DEVELOPMENT PHASES
+39. CODEX EXECUTION PROTOCOL & GUIDELINES
+40. CODE QUALITY STANDARDS & NAMING CONVENTIONS
+41. GIT WORKFLOW & COMMIT CONVENTIONS
+42. DOCUMENTATION REQUIREMENTS
+43. COMPREHENSIVE BUSINESS RULES
+44. EDGE CASES & HANDLING STRATEGIES
+45. FAILURE RECOVERY & RESILIENCE
+46. FUTURE EXTENSIONS & ARCHITECTURAL PLUGS
+47. ARCHITECTURAL DECISION RECORDS (ADRs)
+48. THREAT MODELING & SECURITY ASSESSMENT
+49. FINAL IMPLEMENTATION CHECKLIST
+50. CORE ARCHITECTURAL PRINCIPLES SUMMARY
+51. APPENDIX: CODEX PROMPT PATTERNS & UTILITY SCRIPTS
+
+================================================================================
+1. PROJECT OBJECTIVE
+================================================================================
+The primary objective is to architect and build a production-grade, highly reliable, 
+scalable, and secure Full-Stack Job Portal Application. 
+
+The application serves three distinct user roles:
+1. Candidate / Job Seeker: Profile building, resume management, job search, filter, 
+   bookmarking, one-click apply, application tracking, notifications, interview scheduling.
+2. Employer / Recruiter: Company management, job posting lifecycle (draft, active, paused, 
+   closed), applicant candidate tracking system (ATS), stage transitions, interview 
+   scheduling, candidate evaluation notes, hiring analytics.
+3. System Administrator: User/Company/Job moderation, platform role assignments, 
+   reported job/content review, platform analytics, audit logging, system settings.
+
+Non-functional Objectives:
+- SLA: 99.9% uptime.
+- Performance: Sub-100ms API p95 response time; sub-2s initial page rendering.
+- Security: Zero OWASP Top 10 vulnerabilities, strict RBAC, encrypted PII.
+- Scalability: Up to 100,000 active users without architectural rewrites.
+
+================================================================================
+2. FIRST PRINCIPLE & TECHNOLOGY DECISION MATRIX
+================================================================================
+Every technology in this project is selected based on zero-trust evaluation of project 
+requirements rather than industry trends.
+
+--------------------------------------------------------------------------------
+Technology Choice 1: Monolithic Node.js / TypeScript Backend vs Microservices
+--------------------------------------------------------------------------------
+- Decision: Modular Monolith (TypeScript + Express/Fastify).
+- Rationale: Microservices introduce network latency, distributed transaction complexity 
+  (Saga pattern), deployment overhead, and premature optimization for early-stage portals.
+- Justification over alternatives: A modular monolith allows logical boundaries between 
+  domains (Auth, Job, Application, Notification) within a single deployment unit, enforcing 
+  strict layer separation while preserving ACID database transactions across domains.
+
+--------------------------------------------------------------------------------
+Technology Choice 2: PostgreSQL vs MongoDB / NoSQL
+--------------------------------------------------------------------------------
+- Decision: PostgreSQL 16+.
+- Rationale: Job portals are inherently relational and data-integrity critical. Applications 
+  belong to Candidates and Jobs; Jobs belong to Companies; Companies contain Recruiters. 
+  Foreign key constraints, CASCADE actions, atomic state transitions, and ACID properties 
+  prevent orphan records and duplicate applications.
+- Justification over alternatives: MongoDB lacks built-in declarative schema constraints across 
+  collections, making duplicate applications or orphaned resumes common without heavy 
+  application-level locking.
+
+--------------------------------------------------------------------------------
+Technology Choice 3: PostgreSQL Full-Text Search (TSVector) vs Elasticsearch
+--------------------------------------------------------------------------------
+- Decision: PostgreSQL Built-in Full-Text Search (TSVector + GIN Index) for initial launch.
+- Rationale: Adding Elasticsearch introduces cluster management, sync lag, data 
+  reconciliation scripts, and extra hosting costs. PostgreSQL `tsvector` with `pg_trgm` 
+  handles tens of thousands of jobs and fuzzy skill queries with sub-20ms response time.
+- Justification over alternatives: Decouples infrastructure overhead until job volume exceeds 
+  500,000 active listings.
+
+--------------------------------------------------------------------------------
+Technology Choice 4: Next.js (App Router) vs Vite + SPA
+--------------------------------------------------------------------------------
+- Decision: Next.js 14+ (App Router) with SSR & Server Components.
+- Rationale: Job postings require aggressive Search Engine Optimization (SEO), OpenGraph 
+  meta tags for social sharing, and fast Server-Side Rendering (SSR) for web crawlers (Google 
+  Jobs indexer).
+- Justification over alternatives: Single Page Applications (Vite) render client-side, 
+  severely hindering SEO discoverability for open job positions.
+
+================================================================================
+3. TECHNOLOGY STACK SPECIFICATION
+================================================================================
+Frontend:
+  - Framework: Next.js 14+ (React 18+, TypeScript 5+)
+  - Styling: Tailwind CSS v3+
+  - UI Components: Shadcn UI + Radix UI Primitives (Accessible, unstyled primitives)
+  - State Management: TanStack Query v5 (Server State) + Zustand (Client UI State)
+  - Forms & Validation: React Hook Form + Zod (Shared schemas with backend)
+  - Icons: Lucide-React
+
+Backend:
+  - Runtime: Node.js 20 LTS
+  - Framework: Express.js (or Fastify) with TypeScript
+  - ORM / Query Builder: Prisma ORM v5 / Kysely for complex raw SQL queries
+  - Validation: Zod schemas
+  - Job Queue / Background Processing: BullMQ + Redis (For emails, status sync)
+
+Database & Storage:
+  - Database: PostgreSQL 16
+  - Cache & Queue: Redis 7
+  - Object Storage: AWS S3 or Cloudinary (Local MinIO for development)
+
+DevOps & Infrastructure:
+  - Containerization: Docker + Docker Compose
+  - CI/CD: GitHub Actions
+  - Reverse Proxy / Ingress: Nginx / Cloudflare
+  - Hosting Target: Render / Railway / AWS ECS
+
+================================================================================
+4. CODEX DEVELOPMENT WORKFLOW & PLUGIN STRATEGY
+================================================================================
+To execute this blueprint reliably using Codex, the development strategy enforces strict 
+plugin boundaries and automated verification scripts.
+
+Plugin Recommendation Matrix:
+1. `system:code-reviewer` - Automated code review post-implementation.
+2. `system:db-migration-verifier` - Validates SQL safety, index coverage, and rollback safety.
+3. `system:security-scanner` - OWASP dependency and static code analysis.
+4. `VERIFY BEFORE IMPLEMENTATION`: `awesome-codex-plugins/prisma-schema-helper`
+5. `VERIFY BEFORE IMPLEMENTATION`: `awesome-codex-plugins/typescript-contract-checker`
+
+Rules for Codex Execution:
+- DO NOT allow Codex to modify database migrations manually without running `prisma migrate dev`.
+- DO NOT allow Codex to invent missing endpoints. All endpoints must match Section 20.
+- Mandatory loop per feature: 
+  Read Section -> Draft Zod Schema -> Draft DB Migration -> Implement Backend Service -> 
+  Implement Controller -> Write Integration Test -> Implement Frontend Components -> Verify E2E.
+
+================================================================================
+5. COMPLETE SYSTEM ARCHITECTURE
+================================================================================
+The application follows a Modular Monolith architecture.
+
+
+```
+
++-----------------------------------------------------------------------------+
+|                                CLIENT LAYER                                 |
+|            Next.js App Router (SSR, SSG, Server Actions, React UI)          |
++-----------------------------------------------------------------------------+
+| HTTPS / JSON
+v
++-----------------------------------------------------------------------------+
+|                            INGRESS & SECURITY LAYER                         |
+|                   Cloudflare / Nginx (Rate Limiting, TLS, WAF)              |
++-----------------------------------------------------------------------------+
+|
+v
++-----------------------------------------------------------------------------+
+|                             API GATEWAY / MIDDLEWARE                        |
+|        Auth Guard (JWT Verification), RBAC, Helmet, CORS, Logger, Tracing   |
++-----------------------------------------------------------------------------+
+|
++------------------------------+------------------------------+
+|                              |                              |
+v                              v                              v
++------------------+         +------------------+         +-------------------+
+|   AUTH MODULE    |         |   JOBS MODULE    |         | APPLICATIONS MOD. |
+|  Tokens, OAuth,  |         | Search, Postings,|         | Workflow State,   |
+|  Permissions     |         | Skills, Filters  |         | Resume Parsing    |
++------------------+         +------------------+         +-------------------+
+|                              |                              |
++------------------------------+------------------------------+
+|
+v
++-----------------------------------------------------------------------------+
+|                             PERSISTENCE & CACHE                             |
+|  +-----------------------------------+   +-------------------------------+  |
+|  |     PostgreSQL 16 Primary DB      |   |   Redis Cache & BullMQ Queue  |  |
+|  |  (Tables, Triggers, TSVectors)    |   |  (Sessions, Cache, Jobs)      |  |
+|  +-----------------------------------+   +-------------------------------+  |
++-----------------------------------------------------------------------------+
+|
+v
++-----------------------------------------------------------------------------+
+|                            EXTERNAL SERVICES LAYER                          |
+|    AWS S3 (Resumes/Logos)  |  SendGrid (Email)  |  PostgreSQL TSVector    |
++-----------------------------------------------------------------------------+
+
+```
+
+================================================================================
+6. FRONTEND ARCHITECTURE
+================================================================================
+Directory Structure:
+
+```
+
+frontend/
+├── src/
+│   ├── app/                    # Next.js App Router routes
+│   │   ├── (auth)/             # Auth route group (login, register, reset-password)
+│   │   ├── (candidate)/        # Candidate protected route group
+│   │   │   ├── dashboard/
+│   │   │   ├── applications/
+│   │   │   ├── profile/
+│   │   │   └── saved-jobs/
+│   │   ├── (recruiter)/        # Recruiter protected route group
+│   │   │   ├── recruiter/
+│   │   │   │   ├── jobs/
+│   │   │   │   ├── applicants/
+│   │   │   │   └── company/
+│   │   ├── (admin)/            # Admin protected route group
+│   │   │   ├── admin/
+│   │   │   │   ├── users/
+│   │   │   │   ├── moderation/
+│   │   │   │   └── analytics/
+│   │   ├── jobs/               # Public job search & job details
+│   │   ├── api/                # Next.js API proxy routes (if needed)
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/             # Reusable UI components
+│   │   ├── ui/                 # Shadcn atomic primitives (button, input, modal)
+│   │   ├── forms/              # Domain form components with React Hook Form
+│   │   ├── layouts/            # Navbar, Sidebar, Footer per role
+│   │   └── shared/             # Data tables, pagination, job cards
+│   ├── hooks/                  # Custom React hooks
+│   ├── lib/                    # API client (Axios/Fetch wrapper), query client
+│   ├── providers/              # Auth, QueryClient, Theme providers
+│   ├── store/                  # Zustand global UI states
+│   └── types/                  # TypeScript interfaces matching API DTOs
+
+```
+
+Page Routing Map & Access Control:
+- `/` [PUBLIC] - Landing Page, Featured Jobs, How It Works.
+- `/jobs` [PUBLIC] - Job Search Engine (Faceted search, location, salary).
+- `/jobs/:id` [PUBLIC] - Job details page with Dynamic OpenGraph Meta Tags.
+- `/login`, `/register` [PUBLIC-ONLY] - Auth forms with redirect if already authenticated.
+- `/candidate/profile` [ROLE: CANDIDATE] - Profile builder (Resumes, Skills, Education).
+- `/candidate/applications` [ROLE: CANDIDATE] - KanBan / Table view of applied jobs.
+- `/recruiter/jobs/create` [ROLE: RECRUITER, COMPANY_ADMIN] - Multi-step job posting wizard.
+- `/recruiter/applicants/:jobId` [ROLE: RECRUITER, COMPANY_ADMIN] - Candidate ATS pipeline view.
+- `/admin/dashboard` [ROLE: ADMIN] - System analytics, moderation queue.
+
+================================================================================
+7. BACKEND ARCHITECTURE
+================================================================================
+Directory Structure:
+
+```
+
+backend/
+├── src/
+│   ├── config/                 # Env vars, database connections, Redis client
+│   ├── modules/                # Feature-based modular structure
+│   │   ├── auth/               # Controller, Service, Repository, DTOs, Routes
+│   │   ├── users/
+│   │   ├── profiles/
+│   │   ├── jobs/
+│   │   ├── applications/
+│   │   ├── companies/
+│   │   ├── notifications/
+│   │   └── analytics/
+│   ├── middleware/             # Auth, RBAC, ErrorHandler, RateLimiter, Validation
+│   ├── shared/                 # Utilities, Constants, Custom Errors, Logger
+│   ├── jobs/                   # BullMQ workers (Email processing, Cleanup)
+│   ├── app.ts                  # Express application setup
+│   └── server.ts               # HTTP Server listener
+├── prisma/
+│   ├── schema.prisma           # Master Prisma schema
+│   ├── migrations/             # Incremental SQL migrations
+│   └── seed.ts                 # Database seed script
+
+```
+
+Design Pattern: Modular Monolith with Layered Architecture per module:
+1. Controller Layer: Receives HTTP requests, executes Zod validation, returns standardized HTTP response.
+2. Service Layer: Contains core business logic, orchestrates cross-repository transactions, emits events.
+3. Repository Layer: Encapsulates database queries (Prisma/Kysely), isolates persistence logic.
+
+================================================================================
+8. DATABASE ARCHITECTURE — CORE ENTITIES
+================================================================================
+Core Entities & Purpose:
+1. `users`: Core identity credentials, account status, and role assignment references.
+2. `roles` & `permissions`: Fine-grained Access Control entities.
+3. `user_roles`: Junction table mapping users to structural roles.
+4. `profiles`: Candidate specific metadata (bio, headline, location, expected salary).
+5. `resumes`: Metadata and file references for candidate uploaded documents.
+6. `educations`, `experiences`, `certifications`, `projects`: Candidate portfolio items.
+7. `skills` & `candidate_skills`: Normalized skill taxonomy and mappings.
+8. `companies` & `company_members`: Employer organization entities and recruiter membership mapping.
+9. `jobs`: Comprehensive job postings schema including location, salary, experience.
+10. `job_skills`: Required skill junction table for matching engine.
+11. `applications`: Candidate job submission data and current state.
+12. `application_status_history`: Immutable audit trail of state transitions in applicant tracking.
+13. `saved_jobs`: Candidate bookmarked positions.
+14. `interviews`: Scheduled evaluation sessions between candidates and recruiters.
+15. `recruiter_notes`: Internal company evaluation feedback per applicant.
+16. `notifications`: In-app notification store.
+17. `audit_logs`: Immutable system-wide access and state change log.
+
+================================================================================
+9. DATABASE TABLE SPECIFICATIONS
+================================================================================
+
+TABLE: users
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  email: VARCHAR(255) UNIQUE NOT NULL
+  password_hash: VARCHAR(255) NOT NULL
+  first_name: VARCHAR(100) NOT NULL
+  last_name: VARCHAR(100) NOT NULL
+  phone_number: VARCHAR(20) NULL
+  is_verified: BOOLEAN DEFAULT FALSE NOT NULL
+  status: VARCHAR(20) DEFAULT 'ACTIVE' NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'))
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  updated_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  Indexes:
+    - UNIQUE INDEX idx_users_email ON users(email)
+
+TABLE: roles
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  name: VARCHAR(50) UNIQUE NOT NULL CHECK (name IN ('CANDIDATE', 'RECRUITER', 'COMPANY_ADMIN', 'ADMIN'))
+  description: TEXT NULL
+
+TABLE: user_roles
+  user_id: UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  role_id: UUID REFERENCES roles(id) ON DELETE CASCADE NOT NULL
+  PRIMARY KEY (user_id, role_id)
+
+TABLE: profiles
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  user_id: UUID UNIQUE REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  headline: VARCHAR(150) NULL
+  bio: TEXT NULL
+  location_city: VARCHAR(100) NULL
+  location_country: VARCHAR(100) NULL
+  current_salary: NUMERIC(12, 2) NULL
+  expected_salary: NUMERIC(12, 2) NULL
+  years_of_experience: INT DEFAULT 0 NOT NULL
+  avatar_url: TEXT NULL
+  is_public: BOOLEAN DEFAULT TRUE NOT NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  updated_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: resumes
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  user_id: UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  file_name: VARCHAR(255) NOT NULL
+  file_url: TEXT NOT NULL
+  file_size_bytes: INT NOT NULL
+  mime_type: VARCHAR(100) NOT NULL
+  is_primary: BOOLEAN DEFAULT FALSE NOT NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: companies
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  name: VARCHAR(255) UNIQUE NOT NULL
+  slug: VARCHAR(255) UNIQUE NOT NULL
+  website_url: TEXT NULL
+  logo_url: TEXT NULL
+  description: TEXT NULL
+  industry: VARCHAR(100) NULL
+  company_size: VARCHAR(50) NULL
+  is_verified: BOOLEAN DEFAULT FALSE NOT NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  updated_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: company_members
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  company_id: UUID REFERENCES companies(id) ON DELETE CASCADE NOT NULL
+  user_id: UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  role_in_company: VARCHAR(50) DEFAULT 'RECRUITER' NOT NULL CHECK (role_in_company IN ('ADMIN', 'RECRUITER', 'MEMBER'))
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  UNIQUE (company_id, user_id)
+
+TABLE: jobs
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  company_id: UUID REFERENCES companies(id) ON DELETE CASCADE NOT NULL
+  posted_by_user_id: UUID REFERENCES users(id) ON DELETE SET NULL
+  title: VARCHAR(255) NOT NULL
+  slug: VARCHAR(255) NOT NULL
+  description: TEXT NOT NULL
+  requirements: TEXT NOT NULL
+  location_city: VARCHAR(100) NULL
+  location_country: VARCHAR(100) NULL
+  workplace_type: VARCHAR(30) NOT NULL CHECK (workplace_type IN ('ON_SITE', 'HYBRID', 'REMOTE'))
+  employment_type: VARCHAR(30) NOT NULL CHECK (employment_type IN ('FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP'))
+  experience_level: VARCHAR(30) NOT NULL CHECK (experience_level IN ('ENTRY', 'MID', 'SENIOR', 'EXECUTIVE'))
+  min_salary: NUMERIC(12, 2) NULL
+  max_salary: NUMERIC(12, 2) NULL
+  currency: VARCHAR(3) DEFAULT 'USD' NOT NULL
+  status: VARCHAR(20) DEFAULT 'DRAFT' NOT NULL CHECK (status IN ('DRAFT', 'ACTIVE', 'PAUSED', 'CLOSED', 'ARCHIVED'))
+  views_count: INT DEFAULT 0 NOT NULL
+  search_vector: TSVECTOR NULL
+  expires_at: TIMESTAMPTZ NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  updated_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: skills
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  name: VARCHAR(100) UNIQUE NOT NULL
+
+TABLE: job_skills
+  job_id: UUID REFERENCES jobs(id) ON DELETE CASCADE NOT NULL
+  skill_id: UUID REFERENCES skills(id) ON DELETE CASCADE NOT NULL
+  PRIMARY KEY (job_id, skill_id)
+
+TABLE: candidate_skills
+  user_id: UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  skill_id: UUID REFERENCES skills(id) ON DELETE CASCADE NOT NULL
+  PRIMARY KEY (user_id, skill_id)
+
+TABLE: applications
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  job_id: UUID REFERENCES jobs(id) ON DELETE RESTRICT NOT NULL
+  candidate_id: UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL
+  resume_id: UUID REFERENCES resumes(id) ON DELETE RESTRICT NOT NULL
+  cover_letter: TEXT NULL
+  current_status: VARCHAR(30) DEFAULT 'APPLIED' NOT NULL CHECK (current_status IN ('APPLIED', 'UNDER_REVIEW', 'SHORTLISTED', 'INTERVIEW_SCHEDULED', 'REJECTED', 'ACCEPTED', 'WITHDRAWN'))
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  updated_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+  UNIQUE (job_id, candidate_id)
+
+TABLE: application_status_history
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  application_id: UUID REFERENCES applications(id) ON DELETE CASCADE NOT NULL
+  changed_by_user_id: UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL
+  from_status: VARCHAR(30) NULL
+  to_status: VARCHAR(30) NOT NULL
+  notes: TEXT NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: recruiter_notes
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  application_id: UUID REFERENCES applications(id) ON DELETE CASCADE NOT NULL
+  author_id: UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL
+  note: TEXT NOT NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: interviews
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  application_id: UUID REFERENCES applications(id) ON DELETE CASCADE NOT NULL
+  scheduled_by_user_id: UUID REFERENCES users(id) ON DELETE SET NULL NOT NULL
+  title: VARCHAR(255) NOT NULL
+  start_time: TIMESTAMPTZ NOT NULL
+  end_time: TIMESTAMPTZ NOT NULL
+  meeting_link: TEXT NULL
+  status: VARCHAR(30) DEFAULT 'SCHEDULED' NOT NULL CHECK (status IN ('SCHEDULED', 'COMPLETED', 'CANCELLED', 'RESCHEDULED'))
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+TABLE: audit_logs
+  id: UUID DEFAULT gen_random_uuid() PRIMARY KEY
+  actor_id: UUID NULL
+  action: VARCHAR(100) NOT NULL
+  entity_name: VARCHAR(100) NOT NULL
+  entity_id: UUID NULL
+  ip_address: VARCHAR(45) NULL
+  user_agent: TEXT NULL
+  metadata: JSONB NULL
+  created_at: TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+
+================================================================================
+10. DATABASE RELATIONSHIPS & ASCII ERD
+================================================================================
+
+```
+
++------------------+           +-------------------+
+|      users       |1---------N|    user_roles     |N---------1|   roles    |
++------------------+           +-------------------+           +------------+
+|1               |1
+|                |
+|1               v
+|            +--------------------+
+|            |      profiles      |
+|            +--------------------+
+|
+|1               +--------------------+
++---------------N|      resumes       |
+|                +--------------------+
+|                           ^
+|1                          |1
+|            +--------------------+
++---------------N|    company_mbrs    |N---------1| companies |
+|            +--------------------+           +-----------+
+|                                                   |1
+|                                                   |
+|1                                                  vN
+|            +--------------------+           +-----------+
++---------------N|    applications    |N---------1|   jobs    |
++--------------------+           +-----------+
+|1               |1                  |1
+|                |                   |
+vN               vN                  vN
++------------------+ +-------------+  +---------------+
+| app_stat_history | | recruiter_  |  |  job_skills   |N----1| skills |
++------------------+ |    notes    |  +---------------+      +--------+
++-------------+
+
+```
+
+================================================================================
+11. NORMALIZATION & DENORMALIZATION STRATEGY
+================================================================================
+- Normalization (3NF Guarantee): All core tables strictly satisfy 3NF. Entities like skills, 
+  status histories, and companies are thoroughly normalized into dedicated tables to ensure zero 
+  update/delete anomalies.
+- Selective Denormalization:
+  1. `jobs.search_vector`: Pre-computed `TSVECTOR` updated via database trigger to eliminate 
+     costly runtime string concatenations during search queries.
+  2. `jobs.views_count`: Atomically incremented integer on job detail fetch.
+
+================================================================================
+12. DATABASE INDEXING STRATEGY
+================================================================================
+Indexes are defined based on strict query profile patterns:
+
+1. Job Search & Filtering Index:
+   `CREATE INDEX idx_jobs_search_composite ON jobs(status, workplace_type, experience_level, created_at DESC) WHERE status = 'ACTIVE';`
+   WHY THIS INDEX EXISTS: Prevents full table scans when filtering open job listings on 
+   the landing and job search pages.
+
+2. Full-Text Search Index:
+   `CREATE INDEX idx_jobs_search_vector ON jobs USING GIN(search_vector);`
+   WHY THIS INDEX EXISTS: Enables sub-20ms weighted lexical and title keyword search.
+
+3. Unique Candidate Application Constraint Index:
+   `CREATE UNIQUE INDEX idx_unique_candidate_job_app ON applications(job_id, candidate_id);`
+   WHY THIS INDEX EXISTS: Enforces at the database engine level that a candidate can only apply 
+   once to a specific job listing, eliminating application-level race conditions.
+
+4. Foreign Key Lookup Indexes:
+   `CREATE INDEX idx_applications_candidate ON applications(candidate_id);`
+   `CREATE INDEX idx_applications_job ON applications(job_id);`
+   `CREATE INDEX idx_company_members_user ON company_members(user_id);`
+
+================================================================================
+13. SQL QUERY ARCHITECTURE
+================================================================================
+PostgreSQL Trigger for Full-Text Search Vector Sync:
+```sql
+CREATE OR REPLACE FUNCTION jobs_search_vector_trigger() RETURNS trigger AS $$
+BEGIN
+  NEW.search_vector :=
+    setweight(to_tsvector('english', coalesce(NEW.title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(NEW.description, '')), 'B');
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_jobs_search_vector_update
+BEFORE INSERT OR UPDATE ON jobs
+FOR EACH ROW EXECUTE FUNCTION jobs_search_vector_trigger();
+
+```
+
+Faceted Job Search Query with Pagination (Cursor-based):
+
+```sql
+SELECT 
+  j.id, j.title, j.location_city, j.salary_min, j.salary_max, j.created_at,
+  c.name AS company_name, c.logo_url
+FROM jobs j
+JOIN companies c ON j.company_id = c.id
+WHERE j.status = 'ACTIVE'
+  AND j.search_vector @@ plainto_tsquery('english', $1)
+  AND ($2::VARCHAR IS NULL OR j.workplace_type = $2)
+  AND ($3::NUMERIC IS NULL OR j.max_salary >= $3)
+  AND j.created_at < $4
+ORDER BY j.created_at DESC
+LIMIT $5;
+
+```
+
+# ================================================================================
+14. TRANSACTIONS & ACID ISOLATION
+
+Multi-step transactional operations MUST run within explicit database transactions with appropriate isolation levels.
+
+Example Transaction: Application Submission
+
+```sql
+BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+-- 1. Check job availability and lock row
+SELECT id, status FROM jobs WHERE id = $1 FOR SHARE;
+
+-- 2. Insert application (Fails if duplicate due to UNIQUE constraint)
+INSERT INTO applications (id, job_id, candidate_id, resume_id, current_status)
+VALUES ($2, $1, $3, $4, 'APPLIED');
+
+-- 3. Log initial status history
+INSERT INTO application_status_history (id, application_id, changed_by_user_id, from_status, to_status)
+VALUES ($5, $2, $3, NULL, 'APPLIED');
+
+COMMIT;
+
+```
+
+# ================================================================================
+15. CONCURRENCY CONTROL & RACE CONDITIONS
+
+1. Double-Application Prevention: Managed by `UNIQUE (job_id, candidate_id)` database index constraint.
+2. Concurrent Status Change: Optimistic concurrency control using `updated_at` timestamps or row locking using `SELECT ... FOR UPDATE`.
+3. Application to Closed Jobs: Checked within transactional read lock (`FOR SHARE`).
+
+# ================================================================================
+16. PAGINATION STRATEGY
+
+* Admin Dashboard / User Lists: Offset-based pagination (`LIMIT x OFFSET y`). Suitable for deep jumping pages where total count is required.
+* Candidate Job Search Feed / Recruiter Applicant Feed: Cursor-based keyset pagination (`WHERE created_at < $last_seen_timestamp ORDER BY created_at DESC LIMIT n`). Eliminates query performance degradation on deep pages and prevents missing/duplicate items when new records are added concurrently.
+
+# ================================================================================
+17. SEARCH SYSTEM ARCHITECTURE
+
+The job search pipeline uses PostgreSQL native TSVector with `pg_trgm` extension for fuzzy matching.
+
+* Search Targets: Job title (weight 'A'), Job description (weight 'B'), Company name, and required Skill taxonomy.
+* Ranking Function: `ts_rank_cd(search_vector, query)` combined with date decay parameters.
+
+# ================================================================================
+18. AUTHENTICATION ARCHITECTURE
+
+* Password Hashing: Argon2id with standard OWASP parameters (Memory: 64MB, Parallelism: 2, Iterations: 3).
+* Token Management: Dual JWT pattern.
+* Access Token: Short-lived (15 minutes), payload contains `{ userId, roles, companyId }`.
+* Refresh Token: Long-lived (7 days), stored in HTTP-Only, Secure, SameSite=Strict cookie.
+
+
+* Token Revocation: Refresh tokens stored as SHA256 hashes in Redis key-value store, allowing instant token invalidation/session termination.
+
+# ================================================================================
+19. AUTHORIZATION & RBAC SPECIFICATION
+
+Role Hierarchy:
+`ADMIN` > `COMPANY_ADMIN` > `RECRUITER` > `CANDIDATE`
+
+Permission Matrix Middleware Example:
+
+```typescript
+// Authorization guard ensuring user is associated with the resource's company
+export const verifyCompanyAccess = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  const { companyId } = req.params;
+  if (req.user.role === 'ADMIN') return next();
+  
+  const membership = await prisma.companyMember.findUnique({
+    where: { company_id_user_id: { company_id: companyId, user_id: req.user.id } }
+  });
+  
+  if (!membership) throw new ForbiddenError("Access denied to target company resources");
+  next();
+};
+
+```
+
+# ================================================================================
+20. API ARCHITECTURE & ENDPOINT CONTRACTS
+
+Base URL: `/api/v1`
+
+Auth Endpoints:
+
+* `POST /auth/register` - Create account (Candidate or Recruiter).
+* `POST /auth/login` - Authenticate & return Access Token + set Refresh Cookie.
+* `POST /auth/refresh` - Rotate tokens.
+* `POST /auth/logout` - Invalidate refresh token in Redis.
+
+Jobs Endpoints:
+
+* `GET /jobs` - Public faceted job search with cursor pagination.
+* `GET /jobs/:id` - Job details.
+* `POST /jobs` - [RECRUITER, COMPANY_ADMIN] Create new job.
+* `PATCH /jobs/:id` - [RECRUITER, COMPANY_ADMIN] Update job or status.
+
+Applications Endpoints:
+
+* `POST /applications` - [CANDIDATE] Submit application.
+* `GET /applications/me` - [CANDIDATE] Fetch candidate applications.
+* `GET /jobs/:jobId/applications` - [RECRUITER] Fetch applicants for job.
+* `PATCH /applications/:id/status` - [RECRUITER] Update candidate stage.
+
+# ================================================================================
+21. ERROR HANDLING SPECIFICATION
+
+Standardized JSON Error Structure:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "The requested job posting does not exist or has been archived.",
+    "details": [],
+    "timestamp": "2026-09-30T19:22:05.000Z",
+    "requestId": "req-c102a94f-7b"
+  }
+}
+
+```
+
+HTTP Status Standard Mapping:
+
+* 400 Bad Request: Zod validation failure.
+* 401 Unauthorized: Invalid or missing JWT access token.
+* 403 Forbidden: Insufficient RBAC permission.
+* 404 Not Found: Entity missing in database.
+* 409 Conflict: Unique key constraint failure (e.g., duplicate application or email).
+* 429 Too Many Requests: Rate limiter trigger.
+* 500 Internal Error: Generic masked error (Internal logs capture full stack trace).
+
+# ================================================================================
+22. SECURITY ARCHITECTURE & OWASP COMPLIANCE
+
+* Injection Prevention: Complete usage of parameterized queries via Prisma ORM / Prepared statements.
+* XSS Prevention: Context-aware HTML sanitization using `DOMPurify` on frontend and server-side text escaping.
+* CSRF Protection: Refresh tokens in `SameSite=Strict` HTTP-Only cookies; API routes rely on custom Bearer Authorization headers.
+* Rate Limiting:
+* Auth Endpoints (`/auth/*`): 5 requests per minute per IP using Redis sliding window log.
+* General API (`/api/*`): 100 requests per minute per IP.
+
+
+* Security Headers: Helmet JS configured with strict Content Security Policy (CSP), HSTS, frameguard.
+
+# ================================================================================
+23. FILE UPLOAD ARCHITECTURE
+
+* Supported Upload Types: Resumes (PDF, DOCX; Max 5MB), Profile Pictures/Logos (PNG, JPEG, WEBP; Max 2MB).
+* Upload Process:
+1. Client calls `POST /api/v1/uploads/presigned-url` with file metadata and MIME type.
+2. Server verifies authentication, checks magic numbers/extension match, generates S3 presigned PUT URL valid for 5 minutes.
+3. Client uploads binary payload directly from browser to S3 bucket.
+4. Server validates uploaded object asynchronously via S3 webhook / post-upload hook.
+
+
+
+# ================================================================================
+24. NOTIFICATION SYSTEM ARCHITECTURE
+
+* Multi-Channel Engine: In-App notifications + Async Email triggers via BullMQ workers.
+* Queue Strategy: Background worker processes SendGrid email dispatches independently of the core API request loop.
+* In-App Store: Persisted in `notifications` table with read/unread toggle and WebSocket/SSE real-time push support.
+
+# ================================================================================
+25. INTERVIEW SCHEDULING SYSTEM
+
+* Conflict Prevention Engine:
+Recruiters schedule interviews linked to an `application_id`. Before insertion, a check verifies overlap:
+`WHERE application_id = $1 AND status = 'SCHEDULED' AND (start_time, end_time) OVERLAPS ($2, $3)`
+* Timezone Storage: All timestamps are strictly maintained in UTC ISO 8601 (`TIMESTAMPTZ`). Formatting converted on client browser.
+
+# ================================================================================
+26. APPLICATION LIFECYCLE & STATE MACHINE
+
+Valid State Transition Graph:
+
+```
+[ APPLIED ] ---------> [ UNDER_REVIEW ] ---------> [ SHORTLISTED ]
+     |                      |                          |
+     |                      v                          v
+     +--------------> [ REJECTED ] <----------- [ INTERVIEW_SCHEDULED ]
+     |                      ^                          |
+     v                      |                          v
+[ WITHDRAWN ] --------------+--------------------> [ ACCEPTED ]
+
+```
+
+Rule: Direct invalid jumps (e.g., `APPLIED` straight to `ACCEPTED`) trigger a `400 Bad Request` state machine exception.
+
+# ================================================================================
+27. ANALYTICS ARCHITECTURE
+
+* Candidate Metrics: Calculated live with simple indexed subqueries (Applications total, views).
+* Recruiter / Admin Funnel Analytics: Pre-aggregated rollups stored in daily cache or refreshed using PostgreSQL Materialized Views (`mv_recruiter_daily_stats`) refreshed during off-peak hours.
+
+# ================================================================================
+28. AUDIT LOGGING SYSTEM
+
+* Mandatory Logging Events: User registration, Password changes, Role privilege adjustments, Company approval/suspension, Job post deletion, Application status mutations.
+* Implementation: Asynchronous non-blocking audit logging service emitting structured entries to PostgreSQL `audit_logs` table.
+
+# ================================================================================
+29. DATABASE MIGRATIONS & SEEDING STRATEGY
+
+* Tool: Prisma Migrations (`prisma migrate`).
+* Environment Isolation: Migrations are committed as explicit `.sql` artifacts under `prisma/migrations/`.
+* CI/CD Deployment Rules: Migrations execute in pipeline prior to code deployment (`prisma migrate deploy`). Zero zero-downtime destructive changes (Columns renamed via multi-stage rollout: Add New -> Copy -> Deprecate -> Drop).
+
+# ================================================================================
+30. SEED DATA SPECIFICATION
+
+Database seed script (`prisma/seed.ts`) automatically populates:
+
+* 1 System Administrator (`admin@jobportal.com`)
+* 2 Companies (`TechCorp`, `DesignStudio`)
+* 4 Recruiter accounts assigned to companies
+* 10 Tech Skills (Node.js, React, PostgreSQL, TypeScript, Python, etc.)
+* 5 Active Job Postings with realistic markdown descriptions
+* 5 Candidate accounts with complete profiles, resumes, and sample applications.
+
+# ================================================================================
+31. TESTING ARCHITECTURE
+
+* Unit Testing: Vitest for isolated business service functions, state machines, and utilities.
+* Integration Testing: Supertest executing against an isolated PostgreSQL container running in Docker.
+* End-to-End (E2E) Testing: Playwright running headless browser scenarios covering full user flows: Candidate applying -> Recruiter reviewing -> Recruiter shortlisting.
+
+# ================================================================================
+32. DEVOPS, CONTAINERIZATION & ENVIRONMENT MANAGEMENT
+
+Docker Compose Configuration (`docker-compose.yml`):
+
+* `api_backend`: Node.js express app.
+* `frontend`: Next.js production build.
+* `postgres_db`: PostgreSQL 16 image with volume persistence.
+* `redis_cache`: Redis 7 alpine container.
+
+Environments: `development`, `testing`, `production`.
+
+# ================================================================================
+33. OBSERVABILITY, LOGGING & METRICS
+
+* Structured Logging: Pino JSON logger formatting logs with `requestId`, `userId`, `timestamp`, `level`.
+* Health Probes:
+* `GET /health/liveness`: Returns 200 OK if HTTP server accepts traffic.
+* `GET /health/readiness`: Verifies active connection pool to PostgreSQL and Redis. Returns 503 if dependencies fail.
+
+
+
+# ================================================================================
+34. PERFORMANCE OPTIMIZATION STRATEGY
+
+* Prevention of N+1 Queries: Mandated use of Prisma `include` / explicit JOINs in Kysely.
+* Database Connection Pooling: PgBouncer / Prisma Client built-in pool manager (Min: 5, Max: 20 connections).
+* Static Asset Caching: Immutable assets served via Cloudflare CDN with `Cache-Control: public, max-age=31536000, immutable`.
+
+# ================================================================================
+35. SCALABILITY ROADMAP (100 -> 100K+ USERS)
+
+* Phase 1 (100 - 1,000 Users): Single Server Modular Monolith + Managed PostgreSQL.
+* Phase 2 (10,000 Users): Separate Next.js frontend to CDN/Vercel, API backend to ECS auto-scaling group, Redis instance for sessions and caching.
+* Phase 3 (100,000+ Users): PostgreSQL Read Replicas for job queries, move search index to dedicated OpenSearch cluster, introduce Kafka/RabbitMQ for event distribution.
+
+# ================================================================================
+36. PROJECT DIRECTORY STRUCTURE
+
+```
+/fullstack-job-portal
+├── .github/
+│   └── workflows/
+│       └── ci-cd.yml
+├── backend/
+│   ├── src/
+│   ├── prisma/
+│   ├── tests/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── tests/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── tsconfig.json
+├── docker-compose.yml
+├── .env.example
+├── architecture.txt
+└── README.md
+
+```
+
+# ================================================================================
+37. ENVIRONMENT VARIABLES SPECIFICATION
+
+Sample `.env.example`:
+
+```env
+# SERVER
+NODE_ENV=development
+PORT=5000
+API_PREFIX=/api/v1
+FRONTEND_URL=http://localhost:3000
+
+# DATABASE
+DATABASE_URL=postgresql://postgres:password@localhost:5432/jobportal_db?schema=public
+REDIS_URL=redis://localhost:6379
+
+# AUTHENTICATION
+JWT_ACCESS_SECRET=your_super_secret_access_key_32_chars
+JWT_REFRESH_SECRET=your_super_secret_refresh_key_32_chars
+ARGON_MEMORY_COST=65536
+
+# FILE STORAGE
+S3_BUCKET_NAME=jobportal-uploads
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+
+# EMAIL
+SENDGRID_API_KEY=SG.your_key
+EMAIL_FROM=noreply@jobportal.com
+
+```
+
+# ================================================================================
+38. STEP-BY-STEP DEVELOPMENT PHASES
+
+* Phase 1: Repository initialization, Shared types, Docker setup, Prisma Schema definition.
+* Phase 2: Database Migration setup, Seeding execution, Redis connection pool setup.
+* Phase 3: Auth module (Registration, Login, Refresh rotation, JWT guards).
+* Phase 4: Core Company & Profile management API endpoints.
+* Phase 5: Jobs posting engine & TSVector search integration.
+* Phase 6: Application submission pipeline & State machine enforcement.
+* Phase 7: Recruiter ATS candidate management & Notes system.
+* Phase 8: Candidate UI (Job Search, Profile Builder, Applications View).
+* Phase 9: Recruiter UI (Job Creator, Applicant KanBan board, Scheduling).
+* Phase 10: Admin UI, Security audits, Integration & E2E Test Suites.
+
+# ================================================================================
+39. CODEX EXECUTION PROTOCOL & GUIDELINES
+
+1. Codex MUST load and validate `architecture.txt` before issuing any code file modifications.
+2. Development loop per module:
+PLAN -> DTO SCHEMA -> DATABASE SHIM -> SERVICE LOGIC -> CONTROLLER -> FRONTEND UI -> TEST
+3. Automated review step: Codex MUST verify zero TypeScript compiler errors (`tsc --noEmit`) and zero broken test scripts after completing every phase.
+
+# ================================================================================
+40. CODE QUALITY STANDARDS & NAMING CONVENTIONS
+
+* TypeScript: Strict Mode Enabled (`"strict": true`). No usage of `any`.
+* Files & Directories: `kebab-case` (e.g., `job-search-card.tsx`, `auth-service.ts`).
+* React Components: `PascalCase` (e.g., `JobSearchCard`).
+* Database Tables & Columns: `snake_case` (e.g., `company_members`, `created_at`).
+
+# ================================================================================
+41. GIT WORKFLOW & COMMIT CONVENTIONS
+
+* Branch Strategy: Feature branches (`feature/auth-login`, `feature/job-search`) branching from `main`.
+* Commit Format: Conventional Commits standard:
+`feat(jobs): add full-text TSVector search filtering`
+`fix(auth): fix refresh token revocation in redis`
+`docs(architecture): update database ERD specs`
+
+# ================================================================================
+42. DOCUMENTATION REQUIREMENTS
+
+* `README.md`: System quickstart guide using `docker-compose up`.
+* OpenAPI / Swagger Spec: Auto-generated endpoints documentation exported at `/docs`.
+* DB Schema Docs: Visual schema file auto-generated via Prisma Entity Relationship tools.
+
+# ================================================================================
+43. COMPREHENSIVE BUSINESS RULES
+
+1. A Candidate cannot submit an application to a job listed under `DRAFT`, `PAUSED`, or `CLOSED` status.
+2. A Recruiter can only modify job listings or access applications associated with their assigned Company ID.
+3. System Admin users possess overriding permission across all system entities.
+4. Withdrawn applications cannot be reopened by candidates; a new application requires recruiter reset.
+
+# ================================================================================
+44. EDGE CASES & HANDLING STRATEGIES
+
+* Candidate Profile Deletion: Cascades deletion of candidate records while preserving anonymized application counters in recruiter analytics.
+* Company Deletion: Soft-deletes company entity and sets associated job listings status to `ARCHIVED`.
+* Concurrent Application on Closed Job: Caught gracefully by transaction read locks (`FOR SHARE`) and throws custom domain error `JOB_CLOSED_FOR_APPLICATIONS`.
+
+# ================================================================================
+45. FAILURE RECOVERY & RESILIENCE
+
+* Database Disconnection: Retries connection up to 5 times exponential backoff before marking health check readiness probe as failing (`503 Service Unavailable`).
+* Storage Unavailability: Presigned URL issuance fails gracefully returning user-friendly retry message without corrupting database application records.
+
+# ================================================================================
+46. FUTURE EXTENSIONS & ARCHITECTURAL PLUGS
+
+1. AI Resume Scoring Engine: Pluggable microservice consuming queue events from `applications` submission channel.
+2. Real-Time Chat System: WebSockets cluster utilizing Redis Pub/Sub backplane cleanly attaching to `applications.id` room channels.
+
+# ================================================================================
+47. ARCHITECTURAL DECISION RECORDS (ADRs)
+
+* ADR-001: Selection of Modular Monolith over Microservices.
+* ADR-002: PostgreSQL Full-Text Search over Elasticsearch for Initial Launch.
+* ADR-003: Selection of Dual JWT Token Pattern with Redis Revocation List.
+* ADR-004: Usage of Prisma ORM for Type-Safe Database Access.
+
+# ================================================================================
+48. SECURITY THREAT MODELING
+
+* Threat: IDOR (Insecure Direct Objecty Reference) on Resume Download links.
+* Mitigation: Presigned URLs generated dynamically only after verifying candidate/recruiter session rights to target resume ID.
+
+
+* Threat: Credential Stuffing on Login.
+* Mitigation: Redis-backed sliding window IP and User-account specific rate limiters.
+
+
+
+# ================================================================================
+49. FINAL IMPLEMENTATION CHECKLIST
+
+Architecture & DB:
+[ ] All 17 Core entities defined with explicit SQL types and foreign keys.
+[ ] Indexing strategy applied for queries and full-text search.
+[ ] Seed scripts populating realistic user roles and sample entities.
+
+Backend API & Auth:
+[ ] Dual JWT token auth system implemented with HTTP-Only refresh cookies.
+[ ] Middleware guards enforcing RBAC role permissions.
+[ ] Zod payloads validating API boundaries.
+
+Frontend & UI:
+[ ] Next.js SSR App router routes implemented.
+[ ] React Hook Form paired with Zod client validation.
+[ ] Responsive accessible UI using Tailwind CSS and Shadcn.
+
+Quality & DevOps:
+[ ] Docker Compose spinning up full app stack seamlessly.
+[ ] Integration and E2E test suites passing completely.
+
+# ================================================================================
+50. CORE ARCHITECTURAL PRINCIPLES SUMMARY
+
+1. Enforce Integrity at the Database Level: FKs, Uniques, and Checks rule supreme over application logic.
+2. Zero-Trust Security: Validate inputs on entry, enforce RBAC on every protected route.
+3. Keep it Modular, Keep it Simple: Avoid premature infrastructure complexity.
+
+# ================================================================================
+51. APPENDIX: CODEX PROMPT PATTERNS
+
+Phase Execution Prompt Template for Codex:
+"Codex, read architecture.txt Section [X]. Implement Phase [Y] components strictly following the specifications, directory structures, Zod schemas, and database contracts defined. Once implemented, run Vitest test suites and verify zero TypeScript compiler errors before proceeding."
+
+# ================================================================================
+END OF ARCHITECTURE SPECIFICATION
+
+```
+
+```

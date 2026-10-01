@@ -1,0 +1,421 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum RoleName {
+  CANDIDATE
+  RECRUITER
+  COMPANY_ADMIN
+  ADMIN
+}
+
+enum CompanyMemberRole {
+  ADMIN
+  RECRUITER
+  MEMBER
+}
+
+enum WorkplaceType {
+  ON_SITE
+  HYBRID
+  REMOTE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum ExperienceLevel {
+  ENTRY
+  MID
+  SENIOR
+  EXECUTIVE
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  UNDER_REVIEW
+  SHORTLISTED
+  INTERVIEW_SCHEDULED
+  REJECTED
+  ACCEPTED
+  WITHDRAWN
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+model User {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  email               String                     @unique @db.VarChar(255)
+  passwordHash        String                     @map("password_hash") @db.VarChar(255)
+  firstName           String                     @map("first_name") @db.VarChar(100)
+  lastName            String                     @map("last_name") @db.VarChar(100)
+  phoneNumber         String?                    @map("phone_number") @db.VarChar(20)
+  isVerified          Boolean                    @default(false) @map("is_verified")
+  status              UserStatus                 @default(ACTIVE)
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  roles               UserRole[]
+  profile             Profile?
+  resumes             Resume[]
+  candidateSkills     CandidateSkill[]
+  memberships         CompanyMember[]
+  postedJobs          Job[]                      @relation("PostedJobs")
+  applications        Application[]
+  statusChanges       ApplicationStatusHistory[] @relation("StatusChangedBy")
+  recruiterNotes      RecruiterNote[]            @relation("NoteAuthor")
+  interviewsScheduled Interview[]                @relation("InterviewScheduler")
+  notifications       Notification[]
+  auditLogs           AuditLog[]                 @relation("AuditActor")
+  educations          Education[]
+  experiences         Experience[]
+  certifications      Certification[]
+  projects            Project[]
+  savedJobs           SavedJob[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        RoleName   @unique
+  description String?
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId String @map("user_id") @db.Uuid
+  roleId String @map("role_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Profile {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @map("user_id") @db.Uuid
+  headline          String?  @db.VarChar(150)
+  bio               String?
+  locationCity      String?  @map("location_city") @db.VarChar(100)
+  locationCountry   String?  @map("location_country") @db.VarChar(100)
+  currentSalary     Decimal? @map("current_salary") @db.Decimal(12, 2)
+  expectedSalary    Decimal? @map("expected_salary") @db.Decimal(12, 2)
+  yearsOfExperience Int      @default(0) @map("years_of_experience")
+  avatarUrl         String?  @map("avatar_url")
+  isPublic          Boolean  @default(true) @map("is_public")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Resume {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  fileName      String        @map("file_name") @db.VarChar(255)
+  fileUrl       String        @map("file_url")
+  fileSizeBytes Int           @map("file_size_bytes")
+  mimeType      String        @map("mime_type") @db.VarChar(100)
+  isPrimary     Boolean       @default(false) @map("is_primary")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications  Application[]
+
+  @@index([userId])
+  @@map("resumes")
+}
+
+model Company {
+  id          String          @id @default(uuid()) @db.Uuid
+  name        String          @unique @db.VarChar(255)
+  slug        String          @unique @db.VarChar(255)
+  websiteUrl  String?         @map("website_url")
+  logoUrl     String?         @map("logo_url")
+  description String?
+  industry    String?         @db.VarChar(100)
+  companySize String?         @map("company_size") @db.VarChar(50)
+  isVerified  Boolean         @default(false) @map("is_verified")
+  deletedAt   DateTime?       @map("deleted_at") @db.Timestamptz
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  members     CompanyMember[]
+  jobs        Job[]
+
+  @@map("companies")
+}
+
+model CompanyMember {
+  id            String            @id @default(uuid()) @db.Uuid
+  companyId     String            @map("company_id") @db.Uuid
+  userId        String            @map("user_id") @db.Uuid
+  roleInCompany CompanyMemberRole @default(RECRUITER) @map("role_in_company")
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@map("company_members")
+}
+
+model Job {
+  id              String                   @id @default(uuid()) @db.Uuid
+  companyId       String                   @map("company_id") @db.Uuid
+  postedByUserId  String?                  @map("posted_by_user_id") @db.Uuid
+  title           String                   @db.VarChar(255)
+  slug            String                   @db.VarChar(255)
+  description     String
+  requirements    String
+  locationCity    String?                  @map("location_city") @db.VarChar(100)
+  locationCountry String?                  @map("location_country") @db.VarChar(100)
+  workplaceType   WorkplaceType            @map("workplace_type")
+  employmentType  EmploymentType           @map("employment_type")
+  experienceLevel ExperienceLevel          @map("experience_level")
+  minSalary       Decimal?                 @map("min_salary") @db.Decimal(12, 2)
+  maxSalary       Decimal?                 @map("max_salary") @db.Decimal(12, 2)
+  currency        String                   @default("USD") @db.Char(3)
+  status          JobStatus                @default(DRAFT)
+  viewsCount      Int                      @default(0) @map("views_count")
+  searchVector    Unsupported("tsvector")? @map("search_vector")
+  expiresAt       DateTime?                @map("expires_at") @db.Timestamptz
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+  company         Company                  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  postedBy        User?                    @relation("PostedJobs", fields: [postedByUserId], references: [id], onDelete: SetNull)
+  skills          JobSkill[]
+  applications    Application[]
+  savedBy         SavedJob[]
+
+  @@unique([companyId, slug])
+  @@index([status, workplaceType, experienceLevel, createdAt(sort: Desc)])
+  @@index([companyId])
+  @@map("jobs")
+}
+
+model Skill {
+  id         String           @id @default(uuid()) @db.Uuid
+  name       String           @unique @db.VarChar(100)
+  jobs       JobSkill[]
+  candidates CandidateSkill[]
+
+  @@map("skills")
+}
+
+model JobSkill {
+  jobId   String @map("job_id") @db.Uuid
+  skillId String @map("skill_id") @db.Uuid
+  job     Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@map("job_skills")
+}
+
+model CandidateSkill {
+  userId  String @map("user_id") @db.Uuid
+  skillId String @map("skill_id") @db.Uuid
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([userId, skillId])
+  @@map("candidate_skills")
+}
+
+model Application {
+  id            String                     @id @default(uuid()) @db.Uuid
+  jobId         String                     @map("job_id") @db.Uuid
+  candidateId   String                     @map("candidate_id") @db.Uuid
+  resumeId      String                     @map("resume_id") @db.Uuid
+  coverLetter   String?                    @map("cover_letter")
+  currentStatus ApplicationStatus          @default(APPLIED) @map("current_status")
+  createdAt     DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  job           Job                        @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  candidate     User                       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  resume        Resume                     @relation(fields: [resumeId], references: [id], onDelete: Restrict)
+  history       ApplicationStatusHistory[]
+  notes         RecruiterNote[]
+  interviews    Interview[]
+
+  @@unique([jobId, candidateId])
+  @@index([candidateId])
+  @@index([jobId])
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id              String             @id @default(uuid()) @db.Uuid
+  applicationId   String             @map("application_id") @db.Uuid
+  changedByUserId String?            @map("changed_by_user_id") @db.Uuid
+  fromStatus      ApplicationStatus? @map("from_status")
+  toStatus        ApplicationStatus  @map("to_status")
+  notes           String?
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  application     Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  changedBy       User?              @relation("StatusChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
+  @@map("application_status_history")
+}
+
+model RecruiterNote {
+  id            String      @id @default(uuid()) @db.Uuid
+  applicationId String      @map("application_id") @db.Uuid
+  authorId      String?     @map("author_id") @db.Uuid
+  note          String
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  author        User?       @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@map("recruiter_notes")
+}
+
+model Interview {
+  id                String          @id @default(uuid()) @db.Uuid
+  applicationId     String          @map("application_id") @db.Uuid
+  scheduledByUserId String?         @map("scheduled_by_user_id") @db.Uuid
+  title             String          @db.VarChar(255)
+  startTime         DateTime        @map("start_time") @db.Timestamptz
+  endTime           DateTime        @map("end_time") @db.Timestamptz
+  meetingLink       String?         @map("meeting_link")
+  status            InterviewStatus @default(SCHEDULED)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  application       Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  scheduledBy       User?           @relation("InterviewScheduler", fields: [scheduledByUserId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, status])
+  @@map("interviews")
+}
+
+model SavedJob {
+  userId    String   @map("user_id") @db.Uuid
+  jobId     String   @map("job_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@id([userId, jobId])
+  @@map("saved_jobs")
+}
+
+model Education {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  institution  String    @db.VarChar(255)
+  degree       String?   @db.VarChar(150)
+  fieldOfStudy String?   @map("field_of_study") @db.VarChar(150)
+  startedAt    DateTime? @map("started_at") @db.Date
+  endedAt      DateTime? @map("ended_at") @db.Date
+  description  String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("educations")
+}
+
+model Experience {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  companyName String    @map("company_name") @db.VarChar(255)
+  title       String    @db.VarChar(255)
+  location    String?
+  startedAt   DateTime  @map("started_at") @db.Date
+  endedAt     DateTime? @map("ended_at") @db.Date
+  description String?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("experiences")
+}
+
+model Certification {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  name          String    @db.VarChar(255)
+  issuer        String?   @db.VarChar(255)
+  credentialUrl String?   @map("credential_url")
+  issuedAt      DateTime? @map("issued_at") @db.Date
+  expiresAt     DateTime? @map("expires_at") @db.Date
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("certifications")
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  name        String    @db.VarChar(255)
+  description String?
+  projectUrl  String?   @map("project_url")
+  startedAt   DateTime? @map("started_at") @db.Date
+  endedAt     DateTime? @map("ended_at") @db.Date
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("projects")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String    @db.VarChar(100)
+  title     String    @db.VarChar(255)
+  body      String
+  readAt    DateTime? @map("read_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  entityName String   @map("entity_name") @db.VarChar(100)
+  entityId   String?  @map("entity_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityName, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
