@@ -12,4 +12,4 @@ RUN npx prisma generate && npm run build
 
 ENV NODE_ENV=production
 EXPOSE 5000
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npm run db:deploy && npm start"]

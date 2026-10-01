@@ -9,7 +9,8 @@ const refreshCookieName = "jobportal_refresh";
 const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  // Cross-origin frontends (Railway/Vercel separate hosts) need SameSite=None.
+  sameSite: (process.env.NODE_ENV === "production" ? "none" : "strict") as "none" | "strict",
   path: "/api/v1/auth",
 };
 
